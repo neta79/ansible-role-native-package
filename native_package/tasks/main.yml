@@ -1,0 +1,124 @@
+---
+# Role: native_package
+# Purpose: Install packages from direct URLs using the native package manager
+# Parameters:
+#   package_urls: Dictionary mapping package type ('deb', 'rpm', 'apk') to details.
+#                 Each package type key contains:
+#                   - architecture keys ('x86', 'ia64', 'arm', 'aarch64') mapping to download URLs.
+#                   - 'name': The name of the package for installation/removal (OS-family specific).
+#   installed: Boolean indicating whether to install or remove the package (default: true)
+
+- name: Set default parameter values
+  ansible.builtin.set_fact:
+    installed: "{{ installed | default(true) }}"
+
+- name: Determine package type based on OS family
+  ansible.builtin.set_fact:
+    package_type: >-
+      {% if ansible_os_family == 'Debian' %}deb{%
+      elif ansible_os_family == 'RedHat' %}rpm{%
+      elif ansible_os_family == 'Alpine' %}apk{%
+      else %}unsupported{% endif %}
+
+- name: Map Ansible architecture to package URL key
+  ansible.builtin.set_fact:
+    package_arch_key: >-
+      {% if ansible_architecture == 'x86_64' %}ia64{%
+      elif ansible_architecture == 'aarch64' %}aarch64{%
+      elif ansible_architecture in ['armv7l', 'armv6l'] %}arm{%
+      elif ansible_architecture in ['i386', 'i686'] %}x86{%
+      else %}unsupported{% endif %}
+  when: installed | bool
+
+- name: Select package URL and Name based on OS family and architecture
+  ansible.builtin.set_fact:
+    selected_package_url: "{{ package_urls[package_type][package_arch_key] | default(omit) }}"
+    selected_package_name: "{{ package_urls[package_type]['name'] | default(omit) }}"
+  when:
+    - installed | bool
+    - package_type != 'unsupported'
+    - package_arch_key != 'unsupported'
+    - package_urls is defined
+    - package_urls[package_type] is defined
+    - package_urls[package_type][package_arch_key] is defined
+    - package_urls[package_type]['name'] is defined
+
+- name: Fail if no suitable package URL or Name found for this OS family and architecture
+  ansible.builtin.fail:
+    msg: "No suitable package URL or Name found in package_urls for OS family '{{ ansible_os_family }}' (type '{{ package_type }}') and architecture '{{ ansible_architecture }}' (key '{{ package_arch_key }}'). Check package_urls structure includes URL for arch and 'name' key for type."
+  when: installed | bool and (selected_package_url is not defined or selected_package_name is not defined)
+
+- name: Create temporary directory for package
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: native_package
+  register: temp_dir
+  when: installed | bool and selected_package_url is defined
+
+- name: Extract filename from selected URL
+  ansible.builtin.set_fact:
+    package_filename: "{{ selected_package_url | basename }}"
+  when: installed | bool and selected_package_url is defined
+
+- name: Download package file
+  ansible.builtin.get_url:
+    url: "{{ selected_package_url }}"
+    dest: "{{ temp_dir.path }}/{{ package_filename }}"
+    mode: '0644'
+  register: download_result
+  when: installed | bool and selected_package_url is defined
+
+# Debian-based systems (.deb packages)
+- name: Install package on Debian-based systems
+  ansible.builtin.apt:
+    deb: "{{ temp_dir.path }}/{{ package_filename }}"
+    state: present
+  when: installed | bool and package_type == "deb" and selected_package_url is defined
+  become: true
+
+# RedHat-based systems (.rpm packages)
+- name: Install package on RedHat-based systems
+  ansible.builtin.yum:
+    name: "{{ temp_dir.path }}/{{ package_filename }}"
+    state: present
+  when: installed | bool and package_type == "rpm" and selected_package_url is defined
+  become: true
+
+# Alpine-based systems (.apk packages)
+- name: Install package on Alpine-based systems
+  ansible.builtin.apk:
+    name: "{{ temp_dir.path }}/{{ package_filename }}"
+    state: present
+    allow_untrusted: true # Required for installing local .apk files
+  when: installed | bool and package_type == "apk" and selected_package_url is defined
+  become: true
+
+# Package removal (uninstall)
+- name: Select package Name for removal
+  ansible.builtin.set_fact:
+    selected_package_name: "{{ package_urls[package_type]['name'] | default(omit) }}"
+  when:
+    - not installed | bool
+    - package_type != 'unsupported'
+    - package_urls is defined
+    - package_urls[package_type] is defined
+    - package_urls[package_type]['name'] is defined
+
+- name: Fail if no suitable package Name found for removal
+  ansible.builtin.fail:
+    msg: "No suitable package Name found in package_urls for OS family '{{ ansible_os_family }}' (type '{{ package_type }}') for removal. Check package_urls structure includes 'name' key for type."
+  when: not installed | bool and selected_package_name is not defined
+
+- name: Remove package
+  ansible.builtin.package:
+    name: "{{ selected_package_name }}"
+    state: absent
+  when: not installed | bool and selected_package_name is defined
+  become: true
+
+# Cleanup
+- name: Remove temporary directory
+  ansible.builtin.file:
+    path: "{{ temp_dir.path }}"
+    state: absent
+  when: temp_dir.path is defined # temp_dir is only registered when installed=true and URL is found

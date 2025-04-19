@@ -1,0 +1,30 @@
+---
+galaxy_info:
+  role_name: native_package
+  author: Immemora
+  description: Role for installing packages from direct URLs using the native package manager
+  company: NETA
+  license: MIT
+  min_ansible_version: "2.9"
+  platforms:
+    - name: Debian
+      versions:
+        - all
+    - name: Ubuntu
+      versions:
+        - all
+    - name: EL  # Enterprise Linux
+      versions:
+        - all
+    - name: Fedora
+      versions:
+        - all
+    - name: Amazon
+      versions:
+        - all
+  galaxy_tags:
+    - packaging
+    - system
+    - install
+
+dependencies: []

@@ -1,0 +1,26 @@
+---
+# Default variables for the native_package role
+
+# Whether the package should be installed (true) or removed (false)
+installed: true
+
+# Required variables (should be provided by user)
+# package_urls:
+#   deb:
+#      x86: "http://example.com/package.deb"  # URL to download the x86 DEB package from
+#      ia64: "http://example.com/package.deb"  # URL to download the x86_64 DEB package from
+#      arm: "http://example.com/package.deb"  # URL to download the Arm DEB package from
+#      aarch64 : "http://example.com/package.deb"  # URL to download Arm64 the DEB package from
+#      name: "example_package"  # Name of the package to be installed (this is OS-family specific)
+#   rpm: 
+#      x86: "http://example.com/package.rpm"  # URL to download the x86 RPM package from
+#      ia64: "http://example.com/package.rpm"  # URL to download the x86_64 RPM package from
+#      arm: "http://example.com/package.rpm"  # URL to download the Arm RPM package from
+#      aarch64 : "http://example.com/package.rpm"  # URL to download Arm64 RPM DEB package from
+#      name: "example-package"  # Name of the package to be installed (this is OS-family specific)
+#   apk: 
+#      x86: "http://example.com/package.rpm"  # URL to download the x86 APK package from
+#      ia64: "http://example.com/package.rpm"  # URL to download the x86_64 APK package from
+#      arm: "http://example.com/package.rpm"  # URL to download the Arm APK package from
+#      aarch64 : "http://example.com/package.rpm"  # URL to download Arm64 APK DEB package from
+#      name: "examplePackage"  # Name of the package to be installed (this is OS-family specific)
