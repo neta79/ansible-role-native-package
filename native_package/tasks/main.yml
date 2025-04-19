@@ -150,4 +150,10 @@
       name: "{{ selected_package_name }}"
       state: absent
     become: true
+  - name: Remove package file (DEB Purge)
+    ansible.builtin.command:
+      cmd: >-
+        dpkg -P {{ selected_package_name }}
+    when: package_type == "deb" and selected_package_name is defined
+    ignore_errors: true
 
